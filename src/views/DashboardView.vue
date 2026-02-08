@@ -247,6 +247,7 @@ onBeforeUnmount(() => {
       <div class="player-list-section">
         <h2>Players ({{ playerList.length }})</h2>
         <p class="hint">Real-time from WebSocket</p>
+        <div class="player-grid">
         <div v-for="p in playerList" :key="p.playerName" class="player-card">
           <div class="player-row">
             <div class="player-header">
@@ -267,6 +268,7 @@ onBeforeUnmount(() => {
           <p v-else class="no-party">No party</p>
           <span class="updated-at">{{ new Date(p.updatedAt).toLocaleTimeString() }}</span>
         </div>
+        </div>
       </div>
       <p v-if="playerList.length === 0 && !wsError" class="no-data">
         No players. Enable Mod Sync, set API URL, join Hypixel.
@@ -282,47 +284,296 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.dashboard { min-height: 100vh; background: #1a1a2e; }
-.header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 2rem; background: #16213e; border-bottom: 1px solid #333; }
-.header h1 { margin: 0; color: #eee; font-size: 1.25rem; }
-.user { display: flex; align-items: center; gap: 1rem; }
-.user span { color: #aaa; font-size: 0.9rem; }
-.user button { padding: 0.4rem 0.8rem; border: 1px solid #444; border-radius: 4px; background: transparent; color: #aaa; cursor: pointer; }
-.user button:hover { background: #333; color: #fff; }
-.content { padding: 2rem; color: #ccc; }
-.ably-status { margin-bottom: 0.5rem; }
-.ws-status { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem; font-size: 0.9rem; color: #888; }
-.ws-status .dot { width: 8px; height: 8px; border-radius: 50%; background: #666; }
-.ws-status .dot.live { background: #6ec96e; box-shadow: 0 0 8px #6ec96e; }
-.ws-status .err { color: #e88; }
-.status-row { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 6px; background: #2a2a3e; color: #888; }
-.status-row.connected { background: #1a3a2a; color: #6ec96e; }
-.status-dot { width: 8px; height: 8px; border-radius: 50%; background: #666; }
-.status-row.connected .status-dot { background: #6ec96e; box-shadow: 0 0 8px #6ec96e; }
-.ably-error { margin: 0.5rem 0 0 1rem; font-size: 0.85rem; color: #e88; }
-.hint { margin: -0.25rem 0 0.5rem; font-size: 0.8rem; color: #666; }
-.admin-message-section, .player-list-section { margin-bottom: 1.5rem; }
-.admin-message-section h2, .player-list-section h2 { margin: 0 0 0.25rem; font-size: 1rem; color: #ccc; }
-.admin-message-form { display: flex; gap: 0.5rem; max-width: 400px; }
-.admin-message-form input { flex: 1; padding: 0.5rem 0.75rem; border: 1px solid #444; border-radius: 4px; background: #2a2a3e; color: #eee; font-size: 0.9rem; }
-.admin-message-form input:focus { outline: none; border-color: #6ec96e; }
-.admin-message-form button { padding: 0.5rem 1rem; border: 1px solid #6ec96e; border-radius: 4px; background: #1a3a2a; color: #6ec96e; cursor: pointer; white-space: nowrap; }
-.admin-message-form button:hover:not(:disabled) { background: #2a4a3a; }
-.admin-message-form button:disabled { opacity: 0.5; cursor: not-allowed; }
-.admin-error { margin: 0.5rem 0 0; font-size: 0.85rem; color: #e88; }
-.player-card { max-width: 360px; padding: 1rem; margin-bottom: 0.75rem; border-radius: 8px; background: #2a2a3e; color: #ddd; }
-.player-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.75rem; }
-.player-header { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; min-width: 0; }
-.info-btn { flex-shrink: 0; padding: 0.35rem 0.6rem; font-size: 0.8rem; border: 1px solid #555; border-radius: 4px; background: #333; color: #aaa; cursor: pointer; }
-.info-btn:hover { background: #444; color: #fff; border-color: #6ec96e; }
-.player-name { font-weight: 600; color: #fff; }
-.player-uuid { font-size: 0.75rem; color: #666; font-family: monospace; }
-.player-area { font-size: 0.85rem; color: #8a8; }
-.player-area.faint { color: #666; }
-.party-members { margin: 0; padding-left: 1.25rem; list-style: none; }
-.party-members li { margin-bottom: 0.25rem; font-size: 0.9rem; }
-.party-members li.leader { color: #daa520; }
-.updated-at { display: block; margin-top: 0.75rem; font-size: 0.75rem; color: #666; }
-.no-party { margin: 0; font-size: 0.9rem; color: #888; }
-.no-data { color: #888; font-style: italic; }
+.dashboard {
+  min-height: 100vh;
+  background: #1a1a2e;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+  background: #16213e;
+  border-bottom: 1px solid #333;
+}
+
+.header h1 {
+  margin: 0;
+  color: #eee;
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+
+.user {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user span {
+  color: #aaa;
+  font-size: 0.9rem;
+}
+
+.user button {
+  padding: 0.5rem 1rem;
+  border: 1px solid #444;
+  border-radius: 6px;
+  background: transparent;
+  color: #aaa;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.user button:hover {
+  background: #333;
+  color: #fff;
+}
+
+.content {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem 2.5rem;
+  color: #ccc;
+}
+
+.ably-status {
+  margin-bottom: 0.5rem;
+}
+
+.ws-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  color: #888;
+}
+
+.ws-status .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #666;
+}
+
+.ws-status .dot.live {
+  background: #6ec96e;
+  box-shadow: 0 0 8px #6ec96e;
+}
+
+.ws-status .err {
+  color: #e88;
+}
+
+.status-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  background: #2a2a3e;
+  color: #888;
+}
+
+.status-row.connected {
+  background: #1a3a2a;
+  color: #6ec96e;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #666;
+}
+
+.status-row.connected .status-dot {
+  background: #6ec96e;
+  box-shadow: 0 0 8px #6ec96e;
+}
+
+.ably-error {
+  margin: 0.5rem 0 0 1rem;
+  font-size: 0.85rem;
+  color: #e88;
+}
+
+.hint {
+  margin: -0.25rem 0 0.5rem;
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.admin-message-section {
+  margin-bottom: 2rem;
+}
+
+.admin-message-section h2,
+.player-list-section h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.1rem;
+  color: #ccc;
+}
+
+.admin-message-form {
+  display: flex;
+  gap: 0.5rem;
+  max-width: 560px;
+}
+
+.admin-message-form input {
+  flex: 1;
+  padding: 0.6rem 1rem;
+  border: 1px solid #444;
+  border-radius: 6px;
+  background: #2a2a3e;
+  color: #eee;
+  font-size: 0.95rem;
+}
+
+.admin-message-form input:focus {
+  outline: none;
+  border-color: #6ec96e;
+}
+
+.admin-message-form button {
+  padding: 0.6rem 1.25rem;
+  border: 1px solid #6ec96e;
+  border-radius: 6px;
+  background: #1a3a2a;
+  color: #6ec96e;
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 0.95rem;
+}
+
+.admin-message-form button:hover:not(:disabled) {
+  background: #2a4a3a;
+}
+
+.admin-message-form button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.admin-error {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: #e88;
+}
+
+.player-list-section {
+  margin-bottom: 1.5rem;
+}
+
+.player-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.player-card {
+  padding: 1.25rem;
+  border-radius: 10px;
+  background: #2a2a3e;
+  color: #ddd;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.player-card:hover {
+  border-color: rgba(110, 201, 110, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.player-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.player-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.info-btn {
+  flex-shrink: 0;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+  border: 1px solid #555;
+  border-radius: 6px;
+  background: #333;
+  color: #aaa;
+  cursor: pointer;
+}
+
+.info-btn:hover {
+  background: #444;
+  color: #fff;
+  border-color: #6ec96e;
+}
+
+.player-name {
+  font-weight: 600;
+  color: #fff;
+  font-size: 1.05rem;
+}
+
+.player-uuid {
+  font-size: 0.75rem;
+  color: #666;
+  font-family: ui-monospace, monospace;
+}
+
+.player-area {
+  font-size: 0.9rem;
+  color: #8a8;
+}
+
+.player-area.faint {
+  color: #666;
+}
+
+.party-members {
+  margin: 0;
+  padding-left: 1.25rem;
+  list-style: none;
+}
+
+.party-members li {
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.party-members li.leader {
+  color: #daa520;
+}
+
+.updated-at {
+  display: block;
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.no-party {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #888;
+}
+
+.no-data {
+  color: #888;
+  font-style: italic;
+  margin-top: 1rem;
+}
 </style>

@@ -128,8 +128,8 @@ async function sendCommand() {
 .modal {
   background: #1a1a2e;
   border-radius: 12px;
-  max-width: 480px;
-  width: 90%;
+  max-width: 560px;
+  width: 95%;
   max-height: 85vh;
   display: flex;
   flex-direction: column;
@@ -194,7 +194,7 @@ async function sendCommand() {
   background: #0d0d14;
   border-radius: 8px;
   padding: 0.75rem;
-  max-height: 200px;
+  max-height: 240px;
   overflow-y: auto;
   font-family: monospace;
   font-size: 0.8rem;

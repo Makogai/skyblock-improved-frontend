@@ -60,16 +60,19 @@ async function onSubmit() {
 
 .login-form {
   width: 100%;
-  max-width: 320px;
-  padding: 2rem;
+  max-width: 400px;
+  padding: 2.5rem;
   background: #16213e;
-  border-radius: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 .login-form h1 {
   margin: 0 0 0.25rem;
   color: #eee;
-  font-size: 1.5rem;
+  font-size: 1.6rem;
+  font-weight: 600;
 }
 
 .subtitle {
@@ -105,12 +108,13 @@ async function onSubmit() {
 
 .login-form button {
   width: 100%;
-  padding: 0.75rem;
+  padding: 0.85rem;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   background: #4a90d9;
   color: #fff;
   font-size: 1rem;
+  font-weight: 500;
   cursor: pointer;
 }
 
