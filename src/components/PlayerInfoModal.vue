@@ -2,6 +2,7 @@
 import { ref, watch, nextTick } from 'vue';
 import { sendPlayerCommand } from '@/api/ably';
 import type { PlayerData, ChatEntry } from '@/api/ably';
+import { playerSkinUrl } from '@/utils/minecraft';
 
 const props = defineProps<{
   player: PlayerData | null;
@@ -61,7 +62,13 @@ async function sendCommand() {
     <div v-if="modelValue" class="modal-overlay" @click.self="close">
       <div class="modal" v-if="player">
         <div class="modal-header">
-          <h2>Player: {{ player.playerName }}</h2>
+          <div class="modal-player">
+            <div class="modal-avatar">
+              <span class="avatar-fallback">{{ player.playerName.charAt(0).toUpperCase() }}</span>
+              <img :src="playerSkinUrl(player.playerName, 64)" :alt="player.playerName" @error="(e) => { (e.target as HTMLImageElement).style.display = 'none' }" />
+            </div>
+            <h2>{{ player.playerName }}</h2>
+          </div>
           <button class="close-btn" @click="close">×</button>
         </div>
 
@@ -142,6 +149,40 @@ async function sendCommand() {
   justify-content: space-between;
   padding: 1rem 1.25rem;
   border-bottom: 1px solid #333;
+}
+.modal-player {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.modal-avatar {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #1a1a2e;
+}
+.modal-avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+}
+.modal-avatar .avatar-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #333;
+  color: #8a8;
+  font-weight: 600;
+  font-size: 1.25rem;
 }
 .modal-header h2 {
   margin: 0;

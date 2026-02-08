@@ -4,6 +4,7 @@ import Ably from 'ably';
 import { useAuthStore } from '@/stores/auth';
 import { getAblyStatus, getAblyToken, sendAdminMessage } from '@/api/ably';
 import type { PlayerData, ChatEntry } from '@/api/ably';
+import { playerFullBodyUrl } from '@/utils/minecraft';
 import PlayerInfoModal from '@/components/PlayerInfoModal.vue';
 
 const auth = useAuthStore();
@@ -170,6 +171,7 @@ function chatForPlayer(): ChatEntry[] {
   return chatMap.value.get(selectedPlayer.value.playerName) ?? [];
 }
 
+
 async function doSendAdminMessage() {
   const msg = adminMessage.value.trim();
   if (!msg || adminSending.value) return;
@@ -250,6 +252,10 @@ onBeforeUnmount(() => {
         <div class="player-grid">
         <div v-for="p in playerList" :key="p.playerName" class="player-card">
           <div class="player-row">
+            <div class="player-avatar player-fullbody">
+              <span class="avatar-fallback">{{ p.playerName.charAt(0).toUpperCase() }}</span>
+              <img :src="playerFullBodyUrl(p.playerName, 64)" :alt="p.playerName" @error="(e) => { (e.target as HTMLImageElement).style.display = 'none' }" />
+            </div>
             <div class="player-header">
             <span class="player-name">{{ p.playerName }}</span>
             <span v-if="p.uuid" class="player-uuid">{{ p.uuid }}</span>
@@ -495,6 +501,47 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: 0.75rem;
   margin-bottom: 0.75rem;
+}
+
+.player-avatar {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: transparent;
+}
+
+.player-avatar.player-fullbody {
+  width: 32px;
+  height: 64px;
+}
+
+.player-avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+}
+
+.player-avatar.player-fullbody img {
+  object-fit: contain;
+}
+
+.avatar-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #333;
+  color: #8a8;
+  font-weight: 600;
+  font-size: 1.1rem;
 }
 
 .player-header {
