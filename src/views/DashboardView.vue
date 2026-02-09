@@ -4,7 +4,7 @@ import Ably from 'ably';
 import { useAuthStore } from '@/stores/auth';
 import { getAblyStatus, getAblyToken, sendAdminMessage } from '@/api/ably';
 import type { PlayerData, ChatEntry } from '@/api/ably';
-import { playerFullBodyUrl } from '@/utils/minecraft';
+import { playerFullBodyUrl, parseMcFormat } from '@/utils/minecraft';
 import { screenshotUrl } from '@/api/ably';
 import PlayerInfoModal from '@/components/PlayerInfoModal.vue';
 
@@ -289,9 +289,7 @@ onBeforeUnmount(() => {
             <div class="player-header">
             <span class="player-name">{{ p.playerName }}</span>
             <span v-if="p.uuid" class="player-uuid">{{ p.uuid }}</span>
-            <span v-if="p.area || p.subArea" class="player-area">
-              {{ p.area || '?' }}{{ p.subArea ? ` · ${p.subArea}` : '' }}
-            </span>
+            <span v-if="p.area || p.subArea" class="player-area mc-formatted" v-html="parseMcFormat((p.area || '?') + (p.subArea ? ` · ${p.subArea}` : ''))"></span>
             <span v-else class="player-area faint">—</span>
           </div>
           <button class="info-btn" @click="openPlayerInfo(p)" title="Player info">Info</button>
