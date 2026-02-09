@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth';
 import { getAblyStatus, getAblyToken, sendAdminMessage } from '@/api/ably';
 import type { PlayerData, ChatEntry } from '@/api/ably';
 import { playerFullBodyUrl } from '@/utils/minecraft';
+import { screenshotUrl } from '@/api/ably';
 import PlayerInfoModal from '@/components/PlayerInfoModal.vue';
 
 const auth = useAuthStore();
@@ -19,11 +20,13 @@ const wsConnected = ref(false);
 const selectedPlayer = ref<PlayerData | null>(null);
 const playerInfoOpen = ref(false);
 const chatMap = ref<Map<string, ChatEntry[]>>(new Map());
+const screenshotTimestampMap = ref<Map<string, string>>(new Map());
 
 let statusInterval: ReturnType<typeof setInterval>;
 let presenceSyncInterval: ReturnType<typeof setInterval> | null = null;
 let ablyClient: Ably.Realtime | null = null;
 let channel: Ably.RealtimeChannel | null = null;
+let screenshotsChannel: Ably.RealtimeChannel | null = null;
 
 function parsePlayer(msg: { data?: unknown }): PlayerData | null {
   try {
@@ -107,6 +110,21 @@ function connectAbly() {
         channel.presence.subscribe('leave', (msg) => {
           if (msg.clientId) removePlayer(msg.clientId);
         });
+
+        screenshotsChannel = ablyClient!.channels.get('skyblock:screenshots');
+        await screenshotsChannel.attach();
+        screenshotsChannel.subscribe('screenshot', (msg) => {
+          const raw = msg.data;
+          if (raw === undefined) return;
+          const d = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          const playerName = d?.playerName;
+          const timestamp = d?.timestamp;
+          if (!playerName || !timestamp) return;
+          const m = new Map(screenshotTimestampMap.value);
+          m.set(playerName, timestamp);
+          screenshotTimestampMap.value = m;
+        });
+
         const history = await channel.history({ limit: 100 });
         for (const msg of history.items) {
           if (msg.name === 'update') {
@@ -150,20 +168,29 @@ function disconnectAbly() {
     clearInterval(presenceSyncInterval);
     presenceSyncInterval = null;
   }
+  screenshotsChannel?.unsubscribe();
+  screenshotsChannel?.detach();
   channel?.unsubscribe();
   channel?.detach();
   ablyClient?.close();
   ablyClient = null;
   channel = null;
+  screenshotsChannel = null;
   playersMap.clear();
   playerList.value = [];
   chatMap.value = new Map();
+  screenshotTimestampMap.value = new Map();
   wsConnected.value = false;
 }
 
 function openPlayerInfo(p: PlayerData) {
   selectedPlayer.value = p;
   playerInfoOpen.value = true;
+}
+
+function screenshotForPlayer(p: PlayerData): string | null {
+  const ts = screenshotTimestampMap.value.get(p.playerName);
+  return ts ? screenshotUrl(p.playerName, ts) : null;
 }
 
 function chatForPlayer(): ChatEntry[] {
@@ -251,6 +278,9 @@ onBeforeUnmount(() => {
         <p class="hint">Real-time from WebSocket</p>
         <div class="player-grid">
         <div v-for="p in playerList" :key="p.playerName" class="player-card">
+          <div class="screenshot-preview" v-if="screenshotForPlayer(p)">
+            <img :src="screenshotForPlayer(p)!" :alt="`${p.playerName} screenshot`" />
+          </div>
           <div class="player-row">
             <div class="player-avatar player-fullbody">
               <span class="avatar-fallback">{{ p.playerName.charAt(0).toUpperCase() }}</span>
@@ -284,6 +314,7 @@ onBeforeUnmount(() => {
         v-model="playerInfoOpen"
         :player="selectedPlayer"
         :chat-entries="chatForPlayer()"
+        :screenshot-url="selectedPlayer ? screenshotForPlayer(selectedPlayer) : null"
       />
     </main>
   </div>
@@ -493,6 +524,20 @@ onBeforeUnmount(() => {
 .player-card:hover {
   border-color: rgba(110, 201, 110, 0.3);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.screenshot-preview {
+  width: 100%;
+  aspect-ratio: 16/9;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+  background: #1a1a2e;
+}
+.screenshot-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .player-row {

