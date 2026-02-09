@@ -38,7 +38,7 @@ export function parseMcFormat(text: string): string {
   while (i < text.length) {
     if (text[i] === '§' && i + 1 < text.length) {
       flush();
-      const code = text[i + 1].toLowerCase();
+      const code = text.charAt(i + 1).toLowerCase();
       i += 2;
       if (code === 'r') {
         color = '';
